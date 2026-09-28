@@ -1,0 +1,22 @@
+[project]
+name = "adk-sdlc"
+version = "0.1.0"
+description = "Production SDLC Reference Architecture for Google Agent Development Kit (ADK)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "google-adk>=2.9.0",
+    "google-cloud-aiplatform>=1.70.0",
+    "google-cloud-storage>=2.14.0",
+    "google-auth>=2.28.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"

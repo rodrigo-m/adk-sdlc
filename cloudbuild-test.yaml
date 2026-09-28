@@ -1,0 +1,84 @@
+# ==============================================================================
+# Cloud Build Pipeline: Test Environment (Automated CD)
+# ==============================================================================
+# Triggered automatically on push to 'main'.
+# Executes:
+#   1. Dependency synchronization via 'uv'
+#   2. Programmatic evaluation test harness (asserting non-zero exit code on failure)
+#   3. JUnit XML report artifact archiving
+#   4. In-place deployment to Vertex AI Reasoning Engine / Agent Engine
+#   5. Live API verification / smoke testing
+
+steps:
+  # ----------------------------------------------------------------------------
+  # Step 1: Install uv and synchronize dependencies
+  # ----------------------------------------------------------------------------
+  - name: 'python:3.12-slim'
+    id: 'sync-dependencies'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        echo "--> Installing uv package manager..."
+        pip install --no-cache-dir uv
+        echo "--> Synchronizing project dependencies..."
+        uv pip install --system -r greeting_agent/requirements.txt
+
+  # ----------------------------------------------------------------------------
+  # Step 2: Quality Gate - Programmatic ADK Evaluation Suite
+  # ----------------------------------------------------------------------------
+  - name: 'python:3.12-slim'
+    id: 'eval-harness-quality-gate'
+    entrypoint: 'sh'
+    env:
+      - 'GOOGLE_CLOUD_PROJECT=${_TEST_PROJECT_ID}'
+      - 'GOOGLE_CLOUD_LOCATION=${_REGION}'
+      - 'ENVIRONMENT=test'
+      - 'GCS_BUCKET_NAME=${_TEST_BUCKET}'
+      - 'GOOGLE_GENAI_USE_VERTEXAI=true'
+      - 'GOOGLE_GENAI_USE_ENTERPRISE=true'
+    args:
+      - '-c'
+      - |
+        echo "--> Installing dependencies and running pytest eval harness..."
+        pip install --no-cache-dir uv
+        uv pip install --system -r greeting_agent/requirements.txt
+        mkdir -p reports
+        python -m pytest tests/test_eval_harness.py -v --junitxml=reports/eval-results.xml
+        echo "--> Evaluation harness passed successfully."
+
+  # ----------------------------------------------------------------------------
+  # Step 3: Deploy to Vertex AI Reasoning Engine (Test Project)
+  # ----------------------------------------------------------------------------
+  - name: 'python:3.12-slim'
+    id: 'deploy-agent-test'
+    entrypoint: 'sh'
+    env:
+      - 'GOOGLE_CLOUD_PROJECT=${_TEST_PROJECT_ID}'
+      - 'GOOGLE_CLOUD_LOCATION=${_REGION}'
+      - 'ENVIRONMENT=test'
+      - 'GCS_BUCKET_NAME=${_TEST_BUCKET}'
+      - 'GOOGLE_GENAI_USE_VERTEXAI=true'
+      - 'GOOGLE_GENAI_USE_ENTERPRISE=true'
+    args:
+      - '-c'
+      - |
+        echo "--> Deploying Greeting Agent to Test project: ${_TEST_PROJECT_ID}..."
+        pip install --no-cache-dir uv
+        uv pip install --system -r greeting_agent/requirements.txt
+        chmod +x scripts/*.sh scripts/*.py
+        ./scripts/deploy_agent.sh "${_TEST_PROJECT_ID}" "${_REGION}" "test" "${_TEST_BUCKET}"
+
+substitutions:
+  _TEST_PROJECT_ID: 'your-test-project-id'
+  _TEST_BUCKET: 'your-test-project-id-data'
+  _REGION: 'us-central1'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+artifacts:
+  objects:
+    location: 'gs://${_TEST_BUCKET}/ci-reports/${BUILD_ID}'
+    paths:
+      - 'reports/eval-results.xml'

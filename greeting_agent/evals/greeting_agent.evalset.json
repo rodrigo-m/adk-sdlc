@@ -1,0 +1,105 @@
+{
+  "eval_set_id": "greeting_agent_evals",
+  "name": "Greeting Agent Operational Test Suite",
+  "description": "Hermetic evaluation cases testing environment identification, security context, Pydantic configuration, and dependent GCS storage.",
+  "eval_cases": [
+    {
+      "eval_id": "eval_01_environment_and_greeting",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [
+              {
+                "text": "Hello! Can you greet me and tell me what environment you are running on?"
+              }
+            ]
+          },
+          "expected_tool_calls": [
+            {
+              "name": "get_environment_and_security_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eval_id": "eval_02_security_context_inspection",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [
+              {
+                "text": "What is your security context and authenticated service account principal?"
+              }
+            ]
+          },
+          "expected_tool_calls": [
+            {
+              "name": "get_environment_and_security_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eval_id": "eval_03_custom_env_variable",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [
+              {
+                "text": "What custom banner or extra variable was configured for you in .env?"
+              }
+            ]
+          },
+          "expected_tool_calls": [
+            {
+              "name": "get_environment_and_security_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eval_id": "eval_04_dependent_storage_audit",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [
+              {
+                "text": "Please audit our dependent Google Cloud Storage bucket."
+              }
+            ]
+          },
+          "expected_tool_calls": [
+            {
+              "name": "inspect_dependent_storage"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eval_id": "eval_05_comprehensive_status_report",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [
+              {
+                "text": "Please provide a complete operational report: environment, security context, custom config, and check dependent storage."
+              }
+            ]
+          },
+          "expected_tool_calls": [
+            {
+              "name": "get_environment_and_security_context"
+            },
+            {
+              "name": "inspect_dependent_storage"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

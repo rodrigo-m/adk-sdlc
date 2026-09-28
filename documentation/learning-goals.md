@@ -1,5 +1,6 @@
 Goal: build a clear and easy to use repo that explains how sdlc works for ADK agents. 
 
+
 Success criteria:
 * A thorough readme with key questions that helps a developer learn about GCP, GEAP-based, ADK-based SDLC faster.
 * Clear and concise instructions
@@ -11,7 +12,6 @@ Success criteria:
 Guidance:
 * The repo will be opinionated. There are lots of ways to do this. We will select a stack and explain that stack.
 * Use an agent that is simple and requires a gcs bucket as a dependent resource. This will call for permissions, etc. This agent will be based on the greeting_agent already in the repo. 
-* A simple eval set with 3 evaluations using ADK evaluations.
 
 
 Stack components:
@@ -24,10 +24,20 @@ Stack components:
 * Vertex AI authentication, no API keys.
 
 
+
 Implementation Details:
 * Three projects: <your-cloud-build-project-id>, <agent-test-project-id>, <agent-prod-project-id>
 * The GitHub connection, repo, and triggers are in the <your-cloud-build-project-id> project.
 * Create terraform to setup the three projects, permissions, and infrastructure that is not part of the release process. Shell scripts for everything else.
+* Use the agent-example-rationale.md for instructions on how to create the example agent.
+* Use .env variables and a .env.example in the repo. Add the .env to .gitignore.
+* Use pydantic to load the .env variables and for type checking.
+* Create a simple eval set with 4-6 evaluations using ADK evaluations. Use the eval-harness-rationale for details.
+* Everything you create, install, and configure must be reproducible. I would like someone with python and adk skills to be able to read the readme in 5 minutes and be able to have the sdlc pipeline running within an hour.
+* Under documentation, create an install guide with every step needed to get the repo running in GCP.
+* Use uv and virtual envs for python dependency management.
+
+
 
 
 Questions addressed:

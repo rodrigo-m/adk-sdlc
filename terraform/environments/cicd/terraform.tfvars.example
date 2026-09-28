@@ -1,0 +1,28 @@
+# ==============================================================================
+# CI/CD Orchestration Layer: Variable Definitions Template
+# ==============================================================================
+# Copy this file to terraform.tfvars and populate with your environment values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# DO NOT commit terraform.tfvars into version control.
+# ==============================================================================
+
+# Project ID hosting Cloud Build triggers and GitHub host connection
+cloud_build_project_id = "your-cloud-build-project-id"
+
+# Region for Cloud Build resources
+region                 = "us-central1"
+
+# Name of the Cloud Build 2nd gen GitHub connection
+github_connection_name = "github-connection-001"
+
+# Connected GitHub repository name in Cloud Build (e.g. your-github-user/adk-sdlc)
+github_repo_name       = "your-github-user/adk-sdlc"
+
+# Test Environment Project & Resource Config
+test_project_id        = "your-test-project-id"
+test_bucket_name       = "your-test-project-id-data"
+
+# Production Environment Project & Resource Config
+prod_project_id        = "your-prod-project-id"
+prod_bucket_name       = "your-prod-project-id-data"

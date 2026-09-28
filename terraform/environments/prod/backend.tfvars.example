@@ -1,0 +1,13 @@
+# ==============================================================================
+# Remote State Backend Configuration Template
+# ==============================================================================
+# Copy this file to backend.tfvars and populate with your remote state bucket:
+#   cp backend.tfvars.example backend.tfvars
+#
+# Initialize with:
+#   terraform init -backend-config=backend.tfvars
+#
+# DO NOT commit backend.tfvars into version control.
+# ==============================================================================
+
+bucket = "your-terraform-state-bucket"

@@ -1,0 +1,17 @@
+# ==============================================================================
+# Test Environment: Variable Definitions Template
+# ==============================================================================
+# Copy this file to terraform.tfvars and populate with your environment values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# DO NOT commit terraform.tfvars into version control.
+# ==============================================================================
+
+# Target Google Cloud Project ID for the Test environment
+test_project_id = "your-test-project-id"
+
+# Google Cloud Region for test resources
+region          = "us-central1"
+
+# Name of the ADK agent
+agent_name      = "greeting-agent"

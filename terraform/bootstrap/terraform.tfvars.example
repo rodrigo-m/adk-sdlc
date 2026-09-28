@@ -1,0 +1,17 @@
+# ==============================================================================
+# Terraform Bootstrap: Variable Definitions Template
+# ==============================================================================
+# Copy this file to terraform.tfvars and populate with your environment values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# DO NOT commit terraform.tfvars into version control.
+# ==============================================================================
+
+# Google Cloud Project ID hosting the remote state bucket (typically CI/CD project)
+project_id        = "your-cicd-project-id"
+
+# Google Cloud region for the state storage bucket
+region            = "us-central1"
+
+# Globally unique name for the remote Terraform state GCS bucket
+state_bucket_name = "your-cicd-project-id-terraform-state"

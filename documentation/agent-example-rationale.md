@@ -1,102 +1,103 @@
-# Reconciliation Agent: Architectural Rationale & SDLC Demonstration
+# Agent Architecture Rationale: Dependent Cloud Storage & SDLC Demonstration
 
-## Overview & Definition
+## 1. Executive Summary & Architectural Rationale
 
-The **`reconciliation_agent`** is a focused, operational agent built with the Google Agent Development Kit (ADK) that reads batched operational records from object storage (Google Cloud Storage), evaluates anomalies and discrepancies using an LLM, and writes a structured reconciliation manifest back to an output storage bucket.
+When architecting a Software Development Life Cycle (SDLC) for autonomous agents built with the Google Agent Development Kit (ADK), testing and deploying pure "echo" or standalone text-in/text-out agents is insufficient to evaluate production readiness. Production-facing agents typically require:
+1. **Cross-Project IAM Roles**: Autonomous workloads must authenticate and operate under strict least-privilege service accounts without public API keys.
+2. **Infrastructure as Code (IaC)**: Supporting cloud resources must be provisioned and tracked across isolated environments (`test`, `prod`) using declarative Terraform.
+3. **Environment-Specific Configuration**: Runtime settings must be strongly validated via Pydantic without hardcoded variables.
+4. **Hermetic & Integration Evaluations**: CI/CD pipelines must gate releases using deterministic test harnesses that verify agent tool trajectories and dependent resource connectivity.
 
-### What It Is
-- **An Operational Worker:** An event-driven or scheduled batch processor that reconciles transactions, events, or telemetry logs against business rules and operational policies.
-- **File-Based I/O (Non-RAG):** Instead of using Cloud Storage as an unstructured knowledge base for Retrieval-Augmented Generation (RAG) with vector embeddings, the agent uses GCS for **transactional input/output boundaries** (dropzone ingestion and artifact publishing).
-- **Audit-Centric:** It produces deterministic, schema-compliant summary artifacts (JSON/Markdown) that operations, compliance, or downstream automated systems can consume immediately.
+### Why File-Based Cloud Storage (Non-RAG)?
+Many AI agent demonstrations default to Retrieval-Augmented Generation (RAG) with vector databases (e.g., Vertex AI Vector Search, pgvector). While RAG is valuable for unstructured document search, introducing vector indexes into a foundational SDLC reference architecture adds significant incidental complexity:
+- Vector embeddings and index synchronization pipelines distract from core CI/CD release engineering.
+- Vector database provisioning introduces heavy infrastructure cold-start delays and state overhead.
+
+Instead, this architecture focuses on **file-based transactional I/O via Google Cloud Storage (GCS)**:
+- **Dropzone Ingestion & Artifact Publishing**: Cloud Storage acts as a clean, deterministic boundary for operational inputs and auditable outputs.
+- **Direct IAM Verification**: Calling GCS exercises Google Application Default Credentials (ADC), cross-project service account impersonation, and bucket-level IAM policies (`roles/storage.objectUser`).
+- **Auditability**: Produces verifiable JSON/Markdown artifacts that CI/CD smoke tests and human operators can inspect immediately.
 
 ---
 
-## Real-World Industry Scenarios
+## 2. The Reference Implementation: `greeting_agent`
 
-Below are two enterprise scenarios illustrating how the agent operates in production environments without relying on RAG patterns.
+In this repository, the primary implementation embodying this architecture is the **`greeting_agent`** (located in [`greeting_agent/`](../greeting_agent/)):
 
 ```mermaid
 flowchart LR
-    subgraph StorageIn ["GCS Input Bucket"]
+    subgraph Client ["Client / Caller"]
+        User["User Prompt"]
+    end
+
+    subgraph AgentRuntime ["Vertex AI Reasoning Engine / greeting_agent"]
+        Agent["ADK root_agent<br/>(Gemini 2.5 Flash)"]
+        ToolEnv["get_environment_and_security_context()"]
+        ToolGCS["inspect_dependent_storage()"]
+        Config["Pydantic AgentSettings<br/>(.env / environment variables)"]
+    end
+
+    subgraph Storage ["Google Cloud Storage"]
+        Bucket["gs://<project-id>-data/audit/last_greeting.json"]
+    end
+
+    User --> Agent
+    Agent -.-> Config
+    Agent --> ToolEnv
+    Agent --> ToolGCS
+    ToolGCS -->|Uploads JSON Audit| Bucket
+```
+
+### Key Responsibilities of `greeting_agent`:
+1. **Warm Greeting & Environment Reporting**: Inspects runtime configuration (`dev`, `test`, `prod`) from Pydantic Settings.
+2. **Security Context Auditing**: Surfaces active Google Cloud credentials, caller identity, target project ID, and region.
+3. **Custom Configuration**: Outputs custom variables set via `.env` (such as `GREETING_BANNER`).
+4. **Dependent Storage Audit**: Invokes `inspect_dependent_storage()` to connect to the project's dedicated GCS bucket (`adk-sdlc-test-01-data` or `adk-sdlc-prod-01-data`), verifying write access by recording an audit payload to `gs://<bucket>/audit/last_greeting.json`.
+
+---
+
+## 3. Real-World Industry Scenarios: The Reconciliation Pattern
+
+To illustrate how this file-based operational pattern scales beyond greetings to mission-critical business workflows, consider an operational **`reconciliation_agent`** designed for transactional anomaly processing:
+
+```mermaid
+flowchart LR
+    subgraph StorageIn ["GCS Input Dropzone"]
         RawBatch["Batch Exceptions File<br/>(JSON / CSV)"]
     end
 
-    subgraph AgentRuntime ["ADK reconciliation_agent"]
+    subgraph AgentRuntime ["ADK Operational Agent"]
         ToolRead["read_batch_from_gcs()"] --> LLM["Gemini Reasoning<br/>(Categorize, Reconcile, Triage)"]
         LLM --> ToolWrite["write_report_to_gcs()"]
     end
 
-    subgraph StorageOut ["GCS Output Bucket"]
-        OutputReport["Reconciliation Manifest<br/>(Structured JSON / Audit MD)"]
+    subgraph StorageOut ["GCS Output Dropzone"]
+        OutputReport["Reconciliation Manifest<br/>(Structured JSON / Audit Report)"]
     end
 
     RawBatch --> ToolRead
     ToolWrite --> OutputReport
 ```
 
----
-
 ### Example 1: Manufacturing (Production Line Quality & Scrap Quarantine)
+- **Scenario**: Automated Optical Inspection (AOI) stations on a high-precision manufacturing line reject components and deposit an hourly exception batch file (`gs://<env>-plant-data/exceptions/lot_402.json`).
+- **Agent Behavior**: The agent reads the telemetry anomalies, correlates sensor signatures to distinguish transient tool-wear from catastrophic machine calibration drift, and outputs a lot disposition manifest (`gs://<env>-plant-data/quarantine/lot_402_manifest.json`) flagging parts for rework or scrap.
+- **CI/CD Quality Gate**: The programmatic evaluation suite tests the agent against a synthetic batch containing known tool-wear and calibration failure modes. If the agent misclassifies severe calibration failures or outputs invalid JSON schemas, `pytest` fails with exit code `1`, halting deployment.
 
-#### Scenario
-In a high-precision manufacturing facility, CNC milling machines and automated optical inspection (AOI) stations generate telemetry logs throughout a production shift. When machines detect anomalous tool vibrations, thermal drift, or dimensional tolerance failures, parts are rejected and a consolidated exception batch file (e.g., `gs://<env>-plant-input/lot_402_exceptions.json`) is deposited into Cloud Storage.
-
-#### Agent Behavior
-1. **Reads** the shift exception log containing sensor metrics, machine error codes, and part serial numbers.
-2. **Analyzes & Correlates** failure signatures: distinguishes transient tool-wear anomalies from catastrophic calibration drift affecting entire lots.
-3. **Writes** a structured lot disposition manifest (`gs://<env>-plant-output/lot_402_quarantine_manifest.json`) specifying which serial numbers require manual rework, which must be scrapped, and recommended maintenance flags for specific machines.
-
-#### Evaluation & CI/CD Release Gating
-- **Test Set:** A standardized test batch containing simulated machine errors (e.g., 10 nominal parts, 3 tool-wear warnings, 1 severe calibration failure).
-- **Good Outcome (Release Proceeds):**
-  - The agent identifies the calibration failure as high severity, flags all parts produced after timestamp `T` for mandatory quarantine, and outputs valid JSON matching the manufacturing execution schema.
-  - The evaluation harness confirms 100% metric pass rate; CI/CD exits with status `0`; the build automatically proceeds to release.
-- **Bad Outcome (Release Halts):**
-  - The agent misclassifies the calibration failure as a minor warning, fails to quarantine affected serial numbers, or returns malformed JSON missing required fields (`lot_id`, `disposition`).
-  - The evaluation harness catches the threshold failure and exits with status `1`; the CI pipeline fails, blocking deployment and preventing flawed quality logic from reaching production.
+### Example 2: Healthcare Clearinghouse (Electronic Routing & Exception Triage)
+- **Scenario**: A national health transaction network routes e-prescriptions and eligibility checks. Messages failing partner gateway timeouts or containing invalid pharmacy identifiers land in a dead-letter bucket (`gs://<env>-clearinghouse-data/dead-letter/batch_20260928.json`).
+- **Agent Behavior**: The agent reads the dead-letter records, categorizes recoverable gateway timeouts (for automated re-queueing) versus malformed provider credentials (requiring partner support outreach), and writes a structured triage manifest.
+- **CI/CD Quality Gate**: Pre-deployment evals verify that the agent never classifies permanent credential defects as transient retryable errors, preventing costly retry storms against upstream partner APIs.
 
 ---
 
-### Example 2: Healthcare Transaction Clearinghouse (Electronic Routing & Exception Triage)
+## 4. What This Pattern Proves in the SDLC Context
 
-#### Scenario
-A nationwide health information network routes electronic transactions (such as electronic prescriptions, prior authorizations, and benefit eligibility requests) between health systems, pharmacies, and payers. While the vast majority clear in real time, malformed messages, expired provider identifiers (e.g., NPI or state license issues), and partner gateway timeouts fail transmission. These failed transactions are written into an operational dead-letter dropzone in Cloud Storage (e.g., `gs://<env>-clearinghouse-input/e-rx-transmission-exceptions-20260925.json`).
+Whether deployed as the reference `greeting_agent` or a production `reconciliation_agent`, this architecture exercises all core pillars of the Agent SDLC:
 
-#### Agent Behavior
-1. **Reads** the dead-letter exception batch from Cloud Storage.
-2. **Triages & Categorizes** root causes: separates recoverable network timeouts (eligible for automated retry queues) from permanent data defects (e.g., invalid pharmacy identifier or unmapped medication codes requiring provider outreach).
-3. **Writes** an auditable partner reconciliation manifest (`gs://<env>-clearinghouse-output/reconciliation_summary_20260925.json`) with triage categorizations, compliance flags, and routing instructions.
-
-#### Evaluation & CI/CD Release Gating
-- **Test Set:** A synthetic, de-identified batch containing standard electronic transaction rejections (e.g., 5 network timeouts, 2 invalid provider credential codes, and 1 malformed transaction syntax error).
-- **Good Outcome (Release Proceeds):**
-  - The agent categorizes transient timeouts for re-queueing and flags credential failures for partner operational follow-up. It verifies that privacy/de-identification standards are intact and outputs the exact fields required by downstream settlement queues.
-  - The evaluation suite passes all assertion checks; CI pipeline finishes green; automated release proceeds to test/prod.
-- **Bad Outcome (Release Halts):**
-  - The agent hallucinates or classifies non-recoverable credential errors as transient timeouts (which would flood partner endpoints with invalid retry storms) or fails to produce required audit fields.
-  - The test harness detects the behavioral regression, triggers a non-zero exit code, and halts the deployment pipeline immediately.
-
----
-
-## What the Agent Demonstrates in the SDLC Context
-
-While simple in code (fewer than 50 lines of agent logic), the `reconciliation_agent` was deliberately selected because it touches all critical architectural pillars of an enterprise Agent SDLC:
-
-### 1. Infrastructure as Code (Terraform Across Environments)
-- Demonstrates how cloud infrastructure for an agent is declared, versioned, and provisioned across isolated projects (`adk-sdlc`, `reconcile-agent-test`, `reconcile-agent-prod`).
-- Rather than manually clicking in the Google Cloud Console, Terraform provisions dedicated input and output GCS buckets per environment with proper lifecycle policies and state management.
-
-### 2. IAM & Principle of Least Privilege
-- Teases out exact security boundaries for autonomous agents:
-  - The agent's service account requires read-only permissions (`roles/storage.objectViewer`) on the input bucket.
-  - The agent requires write-only permissions (`roles/storage.objectCreator`) on the output bucket.
-  - Dev/Test agents have zero access to production buckets.
-- Eliminates hardcoded API keys by relying on native Vertex AI authentication and workload identity across environments.
-
-### 3. Dependent Cloud Resources (.env & Pydantic Validation)
-- Provides a realistic demonstration of external dependencies without introducing excessive architectural bloat (like vector databases or multi-tier databases).
-- Configuration settings (e.g., `INPUT_BUCKET_NAME`, `OUTPUT_BUCKET_NAME`, `ENVIRONMENT`) are managed via `.env` files and strictly validated at runtime using Pydantic `BaseSettings`.
-
-### 4. Deterministic Evaluation as a CI/CD Quality Gate
-- Bridges the gap between non-deterministic LLM behavior and deterministic CI/CD release engineering.
-- Shows how standard ADK evaluation sets (`*.evalset.json`) run against hermetic test fixtures in an automated harness (`pytest`), producing machine-readable test reports and enforcing non-zero exit codes that physically block flawed code from shipping.
+| SDLC Pillar | Architectural Implementation |
+| :--- | :--- |
+| **Infrastructure as Code** | Terraform provisions isolated GCS buckets (`adk-sdlc-test-01-data`, `adk-sdlc-prod-01-data`) and assigns bucket-level IAM roles declarations before agent code is packaged. |
+| **Principle of Least Privilege** | Runtime service accounts (`sa-greeting-agent-test`, `sa-greeting-agent-prod`) receive only `roles/storage.objectUser` on their specific project bucket and `roles/aiplatform.user` for Gemini access. |
+| **Pydantic Validation** | Configuration (`GCS_BUCKET_NAME`, `ENVIRONMENT`, `GOOGLE_CLOUD_PROJECT`) is strictly parsed and type-checked at startup, failing fast if environment variables are missing or misconfigured. |
+| **Automated CI/CD Quality Gating** | ADK evaluation sets (`greeting_agent.evalset.json`) executed through `tests/test_eval_harness.py` enforce strict tool trajectory matching, ensuring breaking changes block pipeline progression. |

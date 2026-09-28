@@ -156,3 +156,23 @@ Desktop.ini
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# --- Terraform & CI Reports ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+crash.log
+crash.log.*
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+reports/
+*_tmp*/
+greeting_agent_tmp*/
+
+
