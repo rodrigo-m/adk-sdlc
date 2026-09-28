@@ -22,7 +22,7 @@ The SDLC spans three isolated GCP projects ensuring defense-in-depth and environ
                     v                                       v
 +---------------------------------------+   +---------------------------------------+
 |  2. Test Project: [adk-sdlc-test-01]  |   |  3. Prod Project: [adk-sdlc-prod-01]  |
-|  - Vertex AI Reasoning Engine         |   |  - Vertex AI Reasoning Engine         |
+|  - Gemini Enterprise Agent Runtime    |   |  - Gemini Enterprise Agent Runtime    |
 |  - Dependent GCS Bucket               |   |  - Dependent GCS Bucket               |
 |  - Least-privilege Test SA            |   |  - Least-privilege Prod SA            |
 +---------------------------------------+   +---------------------------------------+

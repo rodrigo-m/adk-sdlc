@@ -97,7 +97,7 @@ To enforce environment isolation, prevent cross-project impact, and maintain sep
 +-----------------------------------------------+   +-----------------------------------------------+
 |          Test Project: [adk-sdlc-test-01]     |   |          Prod Project: [adk-sdlc-prod-01]     |
 |                                               |   |                                               |
-| - Vertex AI Reasoning Engine                  |   | - Vertex AI Reasoning Engine                  |
+| - Gemini Enterprise Agent Runtime             |   | - Gemini Enterprise Agent Runtime             |
 | - Dependent Bucket: adk-sdlc-test-01-data     |   | - Dependent Bucket: adk-sdlc-prod-01-data     |
 | - Runtime SA: sa-greeting-agent-test          |   | - Runtime SA: sa-greeting-agent-prod          |
 | - Storage Permissions: roles/storage.objectUser|  | - Storage Permissions: roles/storage.objectUser|
