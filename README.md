@@ -5,13 +5,20 @@
 [![GCP Vertex AI](https://img.shields.io/badge/GCP-Vertex%20AI%20Reasoning%20Engine-green.svg)](https://cloud.google.com/vertex-ai)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-An opinionated reference blueprint demonstrating how to design, test, secure, provision, and deploy autonomous agents built with the **Google Agent Development Kit (ADK)** on **Google Cloud Platform (GCP)**.
+An opinionated reference blueprint demonstrating how to implement a software development lifecycle for autonomous agents built with the [Google Agent Development Kit (ADK)](https://github.com/google/adk) on **Gemini Enterprise Agent Platform (GCP)**.
 
-This repository provides an automated CI/CD pipeline spanning three isolated GCP projects, programmatic evaluation quality gating, least-privilege IAM management, dependent cloud resource integration, and in-place updates.
+This repository provides an automated CI/CD pipeline spanning three isolated environments: dev (local), test, and prod. It also shows:
+
+- Programmatic evaluation quality gating using ADK standards
+- Least-privilege IAM management
+- Dependent cloud resource integration
+- In-place updates
+
+![Enterprise ADK SDLC Architecture: 2 Runtime Environments + 1 SDLC Orchestration Project](documentation/images/three-project-architecture.jpeg)
 
 > [!NOTE]
 > **Architectural Context & Disclaimer**  
-> This repository provides a reference implementation informed by practical experience across small and large organizations. However, this repository is a reference architecture, not a universal prescription or formal guarantee. Operational requirements and security policies differ across environments, so be sure to adapt these patterns to your organization's specific governance and compliance needs.
+> This repository provides a reference implementation informed by practical experience across small and large organizations. However, this repository is a reference architecture, not a universal prescription nor a guaranteed solution. Operational requirements and security policies differ across companies, so be sure to adapt these patterns to your organization's specific governance and compliance needs.
 
 ---
 

@@ -8,6 +8,8 @@ This guide walks through deploying the entire Google Agent Development Kit (ADK)
 
 The SDLC spans three isolated GCP projects ensuring defense-in-depth and environment segregation:
 
+![3-Project Architecture: 2 Runtime Environments + 1 SDLC Orchestration Project](./images/three-project-architecture.jpeg)
+
 ```
 +---------------------------------------------------------------------------------------+
 |  1. CI/CD Orchestration Project: [adk-sdlc]                                           |
