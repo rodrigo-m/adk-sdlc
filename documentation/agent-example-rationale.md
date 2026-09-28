@@ -19,7 +19,7 @@ flowchart LR
     end
 
     subgraph AgentRuntime ["Vertex AI Reasoning Engine / greeting_agent"]
-        Agent["ADK root_agent<br/>(Gemini 2.5 Flash)"]
+        Agent["ADK root_agent<br/>(Gemini 3.8 Flash)"]
         ToolEnv["get_environment_and_security_context()"]
         ToolGCS["inspect_dependent_storage()"]
         Config["Pydantic AgentSettings<br/>(.env / environment variables)"]

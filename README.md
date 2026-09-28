@@ -61,7 +61,7 @@ There are many ways to manage agents and cloud infrastructure. This repository s
 | Component | Selected Technology | Rationale & Architectural Considerations |
 | :--- | :--- | :--- |
 | **Agent Framework** | **Google ADK (>=2.9.2)** | Native Google Agent Development Kit featuring modular agents, built-in runner workflows, and direct Vertex AI Agent Engine integration. |
-| **Model Backend** | **Vertex AI SDK (`gemini-2.5-flash`)** | Zero public API keys. Authenticates using Google Application Default Credentials (ADC) and IAM service accounts in `us-central1`. |
+| **Model Backend** | **Vertex AI SDK (`gemini-3.8-flash`)** | Zero public API keys. Authenticates using Google Application Default Credentials (ADC) and IAM service accounts in `us-central1`. |
 | **Package Management** | **`uv` (Astral)** | Next-generation Python package manager providing ultra-fast, deterministic virtual environment management (`uv venv`, `uv sync`). |
 | **Configuration & Typing**| **Pydantic Settings (`BaseSettings`)** | Environment-based configuration with strict type validation, field fallbacks, and zero hardcoded secrets. |
 | **Source Control** | **GitHub** | Integrated with Cloud Build via 2nd-gen Google Cloud Build GitHub Host Connections. |
