@@ -29,14 +29,13 @@ This repository provides an automated CI/CD pipeline spanning three isolated env
 - [Three-Project GCP Topology](#three-project-gcp-topology)
 - [Greeting Agent Architecture & Dependencies](#greeting-agent-architecture-dependencies)
 - [Evaluation Suite & Programmatic Harness](#evaluation-suite-programmatic-harness)
-- [Quickstart: Local Setup in 5 Minutes](#quickstart-local-setup-in-5-minutes)
-- [Standing Up the Cloud Environments (Terraform)](#standing-up-the-cloud-environments-terraform)
+- [End-to-End Setup & Deployment Guide](#end-to-end-setup--deployment-guide)
 - [CI/CD Pipelines & Cloud Build Triggers](#cicd-pipelines-cloud-build-triggers)
 - [Comprehensive Q&A: ADK SDLC & Operations](#comprehensive-qa-adk-sdlc--operations)
 - [Repository File Structure](#repository-file-structure)
-- [Step-by-Step Installation Guide](#step-by-step-installation-guide)
+- [Step-by-Step Installation & Setup Guides](#step-by-step-installation--setup-guides)
 - **Deep-Dive Guides**:
-  - [Complete GCP Installation Runbook](documentation/install-guide.md)
+  - [Complete GCP Setup & Deployment Guide](documentation/setup-guide.md)
   - [Terraform Architecture & State Isolation](documentation/terraform-architecture.md)
   - [Agent Dependent Resource Rationale](documentation/agent-example-rationale.md)
   - [Programmatic Evaluation Harness Rationale](documentation/eval-harness-rationale.md)
@@ -144,7 +143,9 @@ For an in-depth breakdown of exit code gating, JUnit XML reporting, and hermetic
 
 ---
 
-## Quickstart: Local Setup in 5 Minutes
+## End-to-End Setup & Deployment Guide
+
+For a standalone step-by-step walkthrough covering project creation, console setup, and complete configuration options, see the [Complete Setup Guide](documentation/setup-guide.md).
 
 ### 1. Clone & Set Up Python Virtual Environment
 ```bash
@@ -172,46 +173,31 @@ ln -sf ../.env greeting_agent/.env
 > `.env` is strictly ignored by [`.gitignore`](.gitignore), ensuring active project IDs and settings are never committed to version control.
 
 ### 3. Authenticate with Google Cloud
-Authenticate your user and Application Default Credentials (ADC):
+Authenticate your user and Application Default Credentials (ADC) for Vertex AI:
 ```bash
 gcloud auth login
 gcloud auth application-default login
 ```
 
-### 4. Run the Programmatic Evaluation Suite
-Execute the 5-case evaluation harness locally:
-```bash
-uv run pytest tests/test_eval_harness.py -v --junitxml=reports/eval-results.xml
+### 4. Environment Setup (Terraform)
+Infrastructure is managed across state-isolated layers using Terraform with remote GCS state backends and a **workable template workflow** (`*.tfvars.example` -> `*.tfvars`):
+
+```
+terraform/
+├── bootstrap/             # Step 1: Provisions remote state GCS bucket
+└── environments/
+    ├── test/              # Step 2: Test project APIs, GCS bucket, and runtime SA
+    ├── prod/              # Step 3: Prod project APIs, GCS bucket, and runtime SA
+    └── cicd/              # Step 4: CI/CD runner SA, cross-project IAM, and triggers
 ```
 
-### 5. Run the Agent Locally via ADK Web UI
-Launch the ADK interactive browser UI:
-```bash
-uv run adk web greeting_agent
-```
-
----
-
-## Standing Up the Cloud Environments (Terraform)
-
-Infrastructure is managed across state-isolated layers using Terraform. Just like `.env.example` -> `.env`, Terraform utilizes a **workable template workflow**:
-
-| File | Purpose | Git Status |
-| :--- | :--- | :--- |
-| `terraform.tfvars.example` | Template with generic placeholders (`your-test-project-id`) | **Tracked** in git |
-| `backend.tfvars.example` | Template with generic state bucket name | **Tracked** in git |
-| `terraform.tfvars` | Active values; automatically loaded by `terraform plan/apply` | **Ignored** by `.gitignore` |
-| `backend.tfvars` | Active state bucket; passed via `-backend-config=backend.tfvars` | **Ignored** by `.gitignore` |
-
-Follow these 4 steps to stand up the complete multi-project infrastructure:
-
-### Step 1: Bootstrap Remote State Storage
-Creates the centralized GCS bucket for Terraform remote state with Uniform Bucket-Level Access and Object Versioning:
+#### Step 4.1: Bootstrap Remote State Storage
+Creates the centralized GCS bucket for Terraform remote state:
 ```bash
 ./scripts/bootstrap_terraform_state.sh "your-cicd-project-id" "us-central1" "your-state-bucket-name"
 ```
 
-### Step 2: Stand Up Test Environment
+#### Step 4.2: Stand Up Test Environment
 Provisions test project APIs, dedicated test GCS bucket, and runtime service account:
 ```bash
 cd terraform/environments/test
@@ -221,7 +207,7 @@ terraform init -backend-config=backend.tfvars
 terraform apply
 ```
 
-### Step 3: Stand Up Production Environment
+#### Step 4.3: Stand Up Production Environment
 Provisions prod project APIs, dedicated prod GCS bucket, and runtime service account:
 ```bash
 cd ../prod
@@ -231,7 +217,7 @@ terraform init -backend-config=backend.tfvars
 terraform apply
 ```
 
-### Step 4: Stand Up CI/CD Pipelines & Cross-Project Triggers
+#### Step 4.4: Stand Up CI/CD Pipelines & Cross-Project Triggers
 Provisions the Cloud Build runner service account, cross-project IAM roles, and automated triggers:
 ```bash
 cd ../cicd
@@ -241,6 +227,31 @@ terraform init -backend-config=backend.tfvars
 terraform apply
 cd ../../..
 ```
+For deep-dive details, see [Terraform Architecture & State Isolation](documentation/terraform-architecture.md).
+
+### 5. Deploy the Agent
+Deploy the agent to Vertex AI Agent Engine / Reasoning Engine using the automated deployment runner:
+```bash
+# Deploy to Test environment (supports in-place updates)
+./scripts/deploy_agent.sh "your-test-project-id" "us-central1" "test" "your-test-project-id-data"
+```
+The [`scripts/deploy_agent.sh`](scripts/deploy_agent.sh) script queries Vertex AI via [`scripts/get_agent_id.py`](scripts/get_agent_id.py) to check for an existing deployment. If found, it performs an **in-place update** preserving the resource ID; otherwise, it creates a fresh deployment.
+
+### 6. Run the Programmatic Evaluation Suite
+Execute the 5-case evaluation test suite to verify agent logic, tool trajectories, and environment configuration:
+```bash
+uv run pytest tests/test_eval_harness.py -v --junitxml=reports/eval-results.xml
+```
+> [!NOTE]
+> **Does the eval script deploy?**  
+> **No.** The evaluation harness (`tests/test_eval_harness.py`) runs in-memory using ADK's `Runner` and `InMemorySessionService` against Gemini on Vertex AI. It does **not** deploy the agent. In CI/CD pipelines, this suite acts as a blocking quality gate *before* deployment occurs; any assertion failure yields exit code `1` and prevents the pipeline from deploying.
+
+### 7. Run the Agent Locally via ADK Web UI
+Launch the ADK interactive browser UI for manual conversation testing:
+```bash
+uv run adk web greeting_agent
+```
+
 
 ---
 
@@ -351,8 +362,8 @@ adk-sdlc/
 │   ├── deploy_agent.sh              # Unified deployment script with in-place updates
 │   └── verify_agent_api.py          # Post-deployment live smoke verification
 └── documentation/                   # Deep-dive documentation
+    ├── setup-guide.md               # End-to-end setup and deployment guide
     ├── terraform-architecture.md    # Complete guide on Terraform state isolation & bootstrap
-    ├── install-guide.md             # Complete step-by-step GCP installation guide
     ├── learning-goals.md            # Project requirements specification
     ├── agent-example-rationale.md   # Architectural rationale for GCS dependent storage
     └── eval-harness-rationale.md    # Architectural rationale for programmatic test harnesses
@@ -360,6 +371,6 @@ adk-sdlc/
 
 ---
 
-## Step-by-Step Installation Guide
+## Step-by-Step Installation & Setup Guides
 
-For complete, copy-pasteable instructions on initializing Google Cloud projects, setting up GitHub 2nd gen connections, executing Terraform, running evals, and verifying deployed agents, refer to the [Complete Installation Guide](documentation/install-guide.md).
+For complete, copy-pasteable instructions on initializing Google Cloud projects, setting up GitHub 2nd gen connections via the Cloud Console, executing Terraform, deploying, running evals, and verifying deployed agents, refer to the [Complete Setup & Deployment Guide](documentation/setup-guide.md).
