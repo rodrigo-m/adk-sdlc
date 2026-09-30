@@ -32,7 +32,8 @@ steps:
     entrypoint: 'sh'
     env:
       - 'GOOGLE_CLOUD_PROJECT=${_TEST_PROJECT_ID}'
-      - 'GOOGLE_CLOUD_LOCATION=${_REGION}'
+      - 'GOOGLE_CLOUD_LOCATION=global'
+      - 'LLM_LOCATION=global'
       - 'ENVIRONMENT=test'
       - 'GCS_BUCKET_NAME=${_TEST_BUCKET}'
       - 'GOOGLE_GENAI_USE_VERTEXAI=true'
@@ -40,6 +41,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         echo "--> Installing dependencies and running pytest eval harness..."
         pip install --no-cache-dir uv
         uv pip install --system -r greeting_agent/requirements.txt
@@ -63,6 +65,7 @@ steps:
     args:
       - '-c'
       - |
+        set -e
         echo "--> Deploying Greeting Agent to Test project: ${_TEST_PROJECT_ID}..."
         pip install --no-cache-dir uv
         uv pip install --system -r greeting_agent/requirements.txt

@@ -28,9 +28,14 @@ class AgentSettings(BaseSettings):
         description="Google Cloud Project ID hosting the agent or runtime",
     )
     google_cloud_location: str = Field(
-        default="us-central1",
+        default="global",
         validation_alias="GOOGLE_CLOUD_LOCATION",
-        description="Target GCP Region",
+        description="Target GCP Region for GenAI models",
+    )
+    llm_location: str = Field(
+        default="global",
+        validation_alias="LLM_LOCATION",
+        description="Target LLM Region",
     )
     llm_model: str = Field(
         default="gemini-3.8-flash",
@@ -56,5 +61,6 @@ def get_settings() -> AgentSettings:
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
     os.environ.setdefault("GOOGLE_CLOUD_PROJECT", settings.google_cloud_project)
     os.environ.setdefault("GOOGLE_CLOUD_LOCATION", settings.google_cloud_location)
+    os.environ.setdefault("LLM_LOCATION", settings.llm_location)
     return settings
 

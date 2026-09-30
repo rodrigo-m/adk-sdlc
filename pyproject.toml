@@ -20,3 +20,7 @@ dependencies = [
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.uv]
+index-url = "https://pypi.org/simple"
+

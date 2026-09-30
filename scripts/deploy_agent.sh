@@ -34,7 +34,8 @@ rm -f greeting_agent/.env
 cat <<EOF > greeting_agent/.env
 ENVIRONMENT=${TARGET_ENV}
 GOOGLE_CLOUD_PROJECT=${TARGET_PROJECT}
-GOOGLE_CLOUD_LOCATION=${TARGET_REGION}
+GOOGLE_CLOUD_LOCATION=global
+LLM_LOCATION=global
 LLM_MODEL=gemini-3.8-flash
 GOOGLE_GENAI_USE_VERTEXAI=true
 GOOGLE_GENAI_USE_ENTERPRISE=true
@@ -42,9 +43,24 @@ GREETING_BANNER=Enterprise ADK SDLC Pipeline Live (${TARGET_ENV})
 GCS_BUCKET_NAME=${TARGET_BUCKET}
 EOF
 
+# Determine python and adk command runners (avoiding redundant venv sync in CI containers)
+if command -v adk >/dev/null 2>&1; then
+  PYTHON_BIN="python3"
+  ADK_BIN="adk"
+elif [[ -d ".venv" && -f ".venv/bin/adk" ]]; then
+  PYTHON_BIN=".venv/bin/python"
+  ADK_BIN=".venv/bin/adk"
+elif command -v uv >/dev/null 2>&1; then
+  PYTHON_BIN="uv run --no-project python"
+  ADK_BIN="uv run --no-project adk"
+else
+  PYTHON_BIN="python3"
+  ADK_BIN="adk"
+fi
+
 # 2. Check for existing deployment ID for in-place update
 echo "[2/4] Inspecting existing Reasoning Engines in ${TARGET_PROJECT}..."
-EXISTING_ID=$(uv run python scripts/get_agent_id.py --project="${TARGET_PROJECT}" --region="${TARGET_REGION}" --display_name="${DISPLAY_NAME}" || true)
+EXISTING_ID=$(${PYTHON_BIN} scripts/get_agent_id.py --project="${TARGET_PROJECT}" --region="${TARGET_REGION}" --display_name="${DISPLAY_NAME}" || true)
 
 # 3. Execute ADK deployment
 echo "[3/4] Deploying agent to Vertex AI Agent Engine..."
@@ -65,18 +81,18 @@ fi
 
 DEPLOY_ARGS+=("greeting_agent")
 
-uv run adk "${DEPLOY_ARGS[@]}"
+${ADK_BIN} "${DEPLOY_ARGS[@]}"
 
 # 4. Verify deployment
 echo "[4/4] Verifying deployed Reasoning Engine..."
-NEW_ID=$(uv run python scripts/get_agent_id.py --project="${TARGET_PROJECT}" --region="${TARGET_REGION}" --display_name="${DISPLAY_NAME}")
+NEW_ID=$(${PYTHON_BIN} scripts/get_agent_id.py --project="${TARGET_PROJECT}" --region="${TARGET_REGION}" --display_name="${DISPLAY_NAME}")
 if [[ -z "${NEW_ID}" ]]; then
   echo "ERROR: Unable to locate deployed Reasoning Engine ID after deployment." >&2
   exit 1
 fi
 
 echo "Deployed Reasoning Engine ID: ${NEW_ID}"
-uv run python scripts/verify_agent_api.py --project="${TARGET_PROJECT}" --region="${TARGET_REGION}" --agent_id="${NEW_ID}"
+${PYTHON_BIN} scripts/verify_agent_api.py --project="${TARGET_PROJECT}" --region="${TARGET_REGION}" --agent_id="${NEW_ID}"
 
 echo "================================================================="
 echo "Deployment and verification SUCCEEDED for ${TARGET_PROJECT}!"
